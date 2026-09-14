@@ -55,7 +55,7 @@
 
   const BOARD_RADIUS = 6;
   const START_INTERVAL = 480;
-  const SPEED_STEP = 45;
+  const SPEED_STEP = 12;
   const MIN_INTERVAL = 295;
   const FAST_MULTIPLIER = 0.75;
   const SLOW_MULTIPLIER = 1.3;
@@ -63,8 +63,7 @@
   const TARGET_TYPES = Object.freeze(["normal", "speed", "slow", "cut", "wall", "armor"]);
 
   function getMoveInterval(foodCount) {
-    const completedSteps = Math.floor(foodCount / 5);
-    return Math.max(MIN_INTERVAL, START_INTERVAL - completedSteps * SPEED_STEP);
+    return Math.max(MIN_INTERVAL, START_INTERVAL - foodCount * SPEED_STEP);
   }
 
   function getSpeedLevel(foodCount) {
@@ -73,9 +72,9 @@
 
   function chooseTargetType(randomValue) {
     const value = Math.max(0, Math.min(0.999999999, randomValue));
-    if (value < 0.5) return "normal";
-    if (value < 0.6) return "speed";
-    if (value < 0.7) return "slow";
+    if (value < 0.6) return "normal";
+    if (value < 0.7) return "speed";
+    if (value < 0.75) return "slow";
     if (value < 0.8) return "cut";
     if (value < 0.9) return "wall";
     return "armor";
@@ -428,6 +427,23 @@
     drawWalls();
 
     if (food) drawTarget(food);
+
+    if (snake.length > 1) {
+      const bodyPath = snake.slice().reverse().map(axialToPixel);
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(bodyPath[0].x, bodyPath[0].y);
+      bodyPath.slice(1).forEach((point) => ctx.lineTo(point.x, point.y));
+      ctx.strokeStyle = "#15836c";
+      ctx.lineWidth = layout.size * 1.03;
+      ctx.stroke();
+      ctx.strokeStyle = "#72edaa";
+      ctx.lineWidth = layout.size * .78;
+      ctx.stroke();
+      ctx.restore();
+    }
 
     snake.slice().reverse().forEach((cell, reverseIndex) => {
       const index = snake.length - 1 - reverseIndex;

@@ -62,12 +62,12 @@ test("moving without food preserves score and length", () => {
   assert.equal(moved.snake.length, 3);
 });
 
-test("speed increases every five foods and stops at minimum interval", () => {
+test("speed increases with every food and stops at minimum interval", () => {
   assert.equal(getMoveInterval(0), START_INTERVAL);
-  assert.equal(getMoveInterval(4), START_INTERVAL);
-  assert.ok(getMoveInterval(5) < START_INTERVAL);
+  assert.equal(getMoveInterval(1), START_INTERVAL - 12);
+  assert.equal(getMoveInterval(2), START_INTERVAL - 24);
   assert.equal(getSpeedLevel(0), 1);
-  assert.equal(getSpeedLevel(5), 2);
+  assert.equal(getSpeedLevel(1), 2);
   assert.equal(getMoveInterval(10_000), MIN_INTERVAL);
   assert.equal(getMoveInterval(10_005), MIN_INTERVAL);
 });
@@ -113,13 +113,15 @@ test("ended state ignores future movement", () => {
   assert.strictEqual(moveGame(state, createBoard(3), 3), state);
 });
 
-test("target type boundaries implement 50 and five 10 percent ranges", () => {
+test("target type boundaries favor apples and make slow and cut rarer", () => {
   assert.equal(chooseTargetType(0), "normal");
-  assert.equal(chooseTargetType(0.499999), "normal");
-  assert.equal(chooseTargetType(0.5), "speed");
-  assert.equal(chooseTargetType(0.599999), "speed");
-  assert.equal(chooseTargetType(0.6), "slow");
-  assert.equal(chooseTargetType(0.7), "cut");
+  assert.equal(chooseTargetType(0.599999), "normal");
+  assert.equal(chooseTargetType(0.6), "speed");
+  assert.equal(chooseTargetType(0.699999), "speed");
+  assert.equal(chooseTargetType(0.7), "slow");
+  assert.equal(chooseTargetType(0.749999), "slow");
+  assert.equal(chooseTargetType(0.75), "cut");
+  assert.equal(chooseTargetType(0.799999), "cut");
   assert.equal(chooseTargetType(0.8), "wall");
   assert.equal(chooseTargetType(0.9), "armor");
   assert.equal(chooseTargetType(1), "armor");
@@ -129,7 +131,7 @@ test("spawned special target uses a valid empty cell", () => {
   let callCount = 0;
   const snake = [{ q: 0, r: 0 }];
   const board = createBoard(2);
-  const target = spawnTarget(board, snake, () => callCount++ === 0 ? 0.72 : 0.5);
+  const target = spawnTarget(board, snake, () => callCount++ === 0 ? 0.77 : 0.5);
   assert.equal(target.type, "cut");
   assert.ok(board.some((cell) => keyOf(cell) === keyOf(target)));
   assert.notEqual(keyOf(target), "0,0");
