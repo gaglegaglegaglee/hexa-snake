@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#10243a">
+  <title>헥스 스네이크</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="game-shell">
+    <header>
+      <p class="eyebrow">SIX-WAY ARCADE</p>
+      <h1>헥스 스네이크</h1>
+      <p class="guide">판의 왼쪽·오른쪽을 터치하거나 방향키를 눌러 60° 회전하세요.</p>
+      <button id="muteButton" class="mute-button" type="button" aria-pressed="false" aria-label="효과음 끄기">🔊 소리 켜짐</button>
+      <div class="hud" aria-label="게임 기록">
+        <span>점수 <strong id="score">0</strong></span>
+        <span>먹이 <strong id="foodCount">0</strong></span>
+        <span>속도 <strong id="speedLevel">1단계</strong></span>
+        <span class="effect-status">효과 <strong id="speedEffect">없음</strong></span>
+        <span class="defense-status">방어 <strong id="defenseStatus">헬멧 없음 · 벽 0/5</strong></span>
+        <span class="best-status">최고 <strong id="bestScore">0점</strong></span>
+      </div>
+    </header>
+
+    <section class="board-wrap" aria-label="육각형 게임판">
+      <canvas id="gameCanvas" tabindex="0" aria-keyshortcuts="ArrowLeft ArrowRight" aria-label="육각 경기장. 왼쪽 절반은 왼쪽 회전, 오른쪽 절반은 오른쪽 회전입니다."></canvas>
+      <div id="countdown" class="countdown" aria-live="assertive" hidden></div>
+      <div id="endPanel" class="end-panel" role="dialog" aria-modal="true" aria-labelledby="endTitle" hidden>
+        <strong id="endTitle">게임 종료</strong>
+        <span id="endReason"></span>
+        <dl class="result-stats">
+          <div><dt>점수</dt><dd id="resultScore">0</dd></div>
+          <div><dt>일반 먹이</dt><dd id="resultFood">0</dd></div>
+          <div><dt>아이템</dt><dd id="resultItems">0</dd></div>
+          <div><dt>최고 점수</dt><dd id="resultBest">0</dd></div>
+        </dl>
+        <button id="retryButton" type="button">다시 하기</button>
+      </div>
+      <div id="pausePanel" class="pause-panel" role="dialog" aria-modal="true" aria-labelledby="pauseTitle" hidden>
+        <strong id="pauseTitle">잠시 멈춤</strong>
+        <span>게임판을 가렸어요. 준비되면 계속하세요.</span>
+        <button id="resumeButton" type="button">계속하기</button>
+      </div>
+      <div id="startPanel" class="start-panel">
+        <strong>여섯 방향으로 달려요!</strong>
+        <span>좌우 터치 또는 방향키로 60° 회전해요. 경기장 밖·몸·벽에 부딪히면 끝나요.</span>
+        <div class="legend" aria-label="먹이와 아이템 범례">
+          <span>● 사과 +100·성장</span><span>ϟ 질주 +50·먹이 3개</span><span>⌛ 느림 +50·먹이 3개</span>
+          <span>✂ 자르기 +50·꼬리 -3</span><span>▰ 벽 +50·최대 5개</span><span>⬟ 갑옷 +50·벽 1회 파괴</span>
+        </div>
+        <small>일반 먹이 5개마다 빨라져요. 헬멧은 생성된 벽만 막고 경기장 밖이나 몸 충돌은 막지 못해요.</small>
+        <button id="startButton" type="button">게임 시작</button>
+      </div>
+    </section>
+
+    <div class="controls" aria-label="방향 조작">
+      <button id="turnLeft" type="button" aria-label="왼쪽으로 60도 회전" disabled>↶<span>왼쪽</span></button>
+      <p id="status" role="status" aria-live="polite">시작 버튼을 눌러주세요</p>
+      <button id="turnRight" type="button" aria-label="오른쪽으로 60도 회전" disabled>↷<span>오른쪽</span></button>
+    </div>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
