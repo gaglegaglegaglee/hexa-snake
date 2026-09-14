@@ -41,7 +41,7 @@
   }
 
   function turnDirection(direction, turn) {
-    return (direction + (turn === "right" ? 1 : -1) + 6) % 6;
+    return (direction + (turn === "right" ? -1 : 1) + 6) % 6;
   }
 
   function enqueueTurn(queue, turn, max = 2) {
@@ -53,7 +53,8 @@
     return [nextHead, ...snake.slice(0, -1)];
   }
 
-  const START_INTERVAL = 520;
+  const BOARD_RADIUS = 6;
+  const START_INTERVAL = 480;
   const SPEED_STEP = 45;
   const MIN_INTERVAL = 295;
   const FAST_MULTIPLIER = 0.75;
@@ -280,7 +281,7 @@
     return { shouldMove: next >= moveInterval, remainder: next >= moveInterval ? next - moveInterval : next };
   }
 
-  const api = { DIRECTIONS, START_INTERVAL, SPEED_STEP, MIN_INTERVAL, FAST_MULTIPLIER, SLOW_MULTIPLIER, TARGET_TYPES, keyOf, addHex, hexDistance, isInsideBoard, getNeighbor, createBoard, pixelToAxial, turnDirection, enqueueTurn, advanceSnake, getMoveInterval, getSpeedLevel, chooseTargetType, getEffectiveMoveInterval, spawnFood, spawnTarget, wallKey, wallCells, areNeighbors, isBoardConnected, createWallCandidates, addSafeWall, moveGame, loadPreferences, savePreference, updateBestScore, createInitialGameState, advanceFrameClock };
+  const api = { DIRECTIONS, BOARD_RADIUS, START_INTERVAL, SPEED_STEP, MIN_INTERVAL, FAST_MULTIPLIER, SLOW_MULTIPLIER, TARGET_TYPES, keyOf, addHex, hexDistance, isInsideBoard, getNeighbor, createBoard, pixelToAxial, turnDirection, enqueueTurn, advanceSnake, getMoveInterval, getSpeedLevel, chooseTargetType, getEffectiveMoveInterval, spawnFood, spawnTarget, wallKey, wallCells, areNeighbors, isBoardConnected, createWallCandidates, addSafeWall, moveGame, loadPreferences, savePreference, updateBestScore, createInitialGameState, advanceFrameClock };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   if (typeof document === "undefined") return;
 
@@ -309,7 +310,7 @@
   const speedEffectElement = document.querySelector("#speedEffect");
   const defenseStatusElement = document.querySelector("#defenseStatus");
   const bestScoreElement = document.querySelector("#bestScore");
-  const radius = 5;
+  const radius = BOARD_RADIUS;
   const board = createBoard(radius);
   const boardKeys = new Set(board.map(keyOf));
   let layout = null;

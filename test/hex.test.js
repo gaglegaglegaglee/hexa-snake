@@ -3,7 +3,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
-  DIRECTIONS, keyOf, hexDistance, isInsideBoard, getNeighbor,
+  DIRECTIONS, BOARD_RADIUS, START_INTERVAL, keyOf, hexDistance, isInsideBoard, getNeighbor,
   createBoard, pixelToAxial, turnDirection, enqueueTurn, advanceSnake
 } = require("../app.js");
 
@@ -44,9 +44,15 @@ test("outside classification follows all three cube axes", () => {
 });
 
 test("left and right turns wrap in 60 degree steps", () => {
-  assert.equal(turnDirection(0, "left"), 5);
-  assert.equal(turnDirection(5, "right"), 0);
-  assert.equal(turnDirection(2, "right"), 3);
+  assert.equal(turnDirection(0, "left"), 1);
+  assert.equal(turnDirection(0, "right"), 5);
+  assert.equal(turnDirection(2, "right"), 1);
+});
+
+test("live board and starting pace use the enlarged, quicker defaults", () => {
+  assert.equal(BOARD_RADIUS, 6);
+  assert.equal(createBoard(BOARD_RADIUS).length, 127);
+  assert.equal(START_INTERVAL, 480);
 });
 
 test("turn queue has a hard limit and does not mutate input", () => {
