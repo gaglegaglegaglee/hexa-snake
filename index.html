@@ -16,7 +16,7 @@
       <button id="muteButton" class="mute-button" type="button" aria-pressed="false" aria-label="효과음 끄기">🔊 소리 켜짐</button>
       <div class="hud" aria-label="게임 기록">
         <span>점수 <strong id="score">0</strong></span>
-        <span>먹이 <strong id="foodCount">0</strong></span>
+        <span>사과 <strong id="foodCount">0</strong></span>
         <span>속도 <strong id="speedLevel">1단계</strong></span>
         <span class="effect-status">효과 <strong id="speedEffect">없음</strong></span>
         <span class="defense-status">방어 <strong id="defenseStatus">헬멧 없음 · 벽 0/5</strong></span>
@@ -32,7 +32,7 @@
         <span id="endReason"></span>
         <dl class="result-stats">
           <div><dt>점수</dt><dd id="resultScore">0</dd></div>
-          <div><dt>일반 먹이</dt><dd id="resultFood">0</dd></div>
+          <div><dt>사과</dt><dd id="resultFood">0</dd></div>
           <div><dt>아이템</dt><dd id="resultItems">0</dd></div>
           <div><dt>최고 점수</dt><dd id="resultBest">0</dd></div>
         </dl>
@@ -47,10 +47,10 @@
         <strong>여섯 방향으로 달려요!</strong>
         <span>좌우 터치 또는 방향키로 60° 회전해요. 경기장 밖·몸·벽에 부딪히면 끝나요.</span>
         <div class="legend" aria-label="먹이와 아이템 범례">
-          <span>● 사과 +100·성장</span><span>ϟ 질주 +50·먹이 3개</span><span>⌛ 느림 +50·먹이 3개</span>
+          <span>● 사과 +100·성장</span><span>ϟ 질주 +50·사과 3개</span><span>⌛ 느림 +50·사과 3개</span>
           <span>✂ 자르기 +50·꼬리 -3</span><span>▰ 벽 +50·최대 5개</span><span>⬟ 갑옷 +50·벽 1회 파괴</span>
         </div>
-        <small>사과를 먹을 때마다 조금씩 빨라져요. 헬멧은 생성된 벽만 막고 경기장 밖이나 몸 충돌은 막지 못해요.</small>
+        <small>사과는 항상 1개가 있고, 아이템은 무작위로 나타났다 사라져요. 사과를 먹을 때마다 조금씩 빨라집니다. 헬멧은 생성된 벽만 막아요.</small>
         <button id="startButton" type="button">게임 시작</button>
       </div>
     </section>

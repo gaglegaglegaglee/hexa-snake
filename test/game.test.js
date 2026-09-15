@@ -4,7 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   START_INTERVAL, MIN_INTERVAL, FAST_MULTIPLIER, SLOW_MULTIPLIER,
-  keyOf, createBoard, chooseTargetType, spawnFood, spawnTarget,
+  ITEM_MIN_DELAY, ITEM_MAX_DELAY, keyOf, createBoard, chooseItemType, spawnFood, spawnItem, nextItemDelay,
   getMoveInterval, getSpeedLevel, getEffectiveMoveInterval,
   wallKey, wallCells, areNeighbors, isBoardConnected, createWallCandidates, addSafeWall, moveGame,
   loadPreferences, savePreference, updateBestScore, createInitialGameState, advanceFrameClock
@@ -13,7 +13,8 @@ const {
 const baseState = (overrides = {}) => ({
   snake: [{ q: 0, r: 0 }, { q: -1, r: 0 }, { q: -2, r: 0 }],
   direction: 0,
-  food: { q: 2, r: 0 },
+  apple: { q: 2, r: 0 },
+  item: null,
   score: 0,
   foodCount: 0,
   itemCount: 0,
@@ -47,12 +48,12 @@ test("food spawn returns null when no empty cell exists", () => {
 
 test("eating food adds 100 points, one food and one body cell", () => {
   const board = createBoard(3);
-  const state = baseState({ food: { q: 1, r: 0 } });
+  const state = baseState({ apple: { q: 1, r: 0 } });
   const moved = moveGame(state, board, 3, () => 0);
   assert.equal(moved.score, 100);
   assert.equal(moved.foodCount, 1);
   assert.equal(moved.snake.length, 4);
-  assert.notEqual(keyOf(moved.food), "1,0");
+  assert.notEqual(keyOf(moved.apple), "1,0");
 });
 
 test("moving without food preserves score and length", () => {
@@ -86,26 +87,26 @@ test("moving into the body ends while moving into a vacated tail is allowed", ()
   const selfHit = baseState({
     snake: [{ q: 0, r: 0 }, { q: 1, r: -1 }, { q: 1, r: 0 }, { q: 0, r: 1 }],
     direction: 0,
-    food: { q: -2, r: 0 }
+    apple: { q: -2, r: 0 }
   });
   assert.equal(moveGame(selfHit, board, 3).endReason, "self");
   const tailMove = baseState({
     snake: [{ q: 0, r: 0 }, { q: 0, r: -1 }, { q: 1, r: -1 }, { q: 1, r: 0 }],
     direction: 0,
-    food: { q: -2, r: 0 }
+    apple: { q: -2, r: 0 }
   });
   assert.equal(moveGame(tailMove, board, 3).phase, "playing");
 });
 
 test("filling the final free cell ends with a win", () => {
   const board = createBoard(1);
-  const food = { q: 1, r: 0 };
-  const snake = board.filter((cell) => keyOf(cell) !== keyOf(food));
+  const apple = { q: 1, r: 0 };
+  const snake = board.filter((cell) => keyOf(cell) !== keyOf(apple));
   snake.unshift(...snake.splice(snake.findIndex((cell) => keyOf(cell) === "0,0"), 1));
-  const won = moveGame(baseState({ snake, food }), board, 1, () => 0);
+  const won = moveGame(baseState({ snake, apple }), board, 1, () => 0);
   assert.equal(won.phase, "ended");
   assert.equal(won.endReason, "win");
-  assert.equal(won.food, null);
+  assert.equal(won.apple, null);
 });
 
 test("ended state ignores future movement", () => {
@@ -113,33 +114,37 @@ test("ended state ignores future movement", () => {
   assert.strictEqual(moveGame(state, createBoard(3), 3), state);
 });
 
-test("target type boundaries favor apples and make slow and cut rarer", () => {
-  assert.equal(chooseTargetType(0), "normal");
-  assert.equal(chooseTargetType(0.599999), "normal");
-  assert.equal(chooseTargetType(0.6), "speed");
-  assert.equal(chooseTargetType(0.699999), "speed");
-  assert.equal(chooseTargetType(0.7), "slow");
-  assert.equal(chooseTargetType(0.749999), "slow");
-  assert.equal(chooseTargetType(0.75), "cut");
-  assert.equal(chooseTargetType(0.799999), "cut");
-  assert.equal(chooseTargetType(0.8), "wall");
-  assert.equal(chooseTargetType(0.9), "armor");
-  assert.equal(chooseTargetType(1), "armor");
+test("item type boundaries never produce apples and keep slow and cut rarer", () => {
+  assert.equal(chooseItemType(0), "speed");
+  assert.equal(chooseItemType(0.249999), "speed");
+  assert.equal(chooseItemType(0.25), "slow");
+  assert.equal(chooseItemType(0.349999), "slow");
+  assert.equal(chooseItemType(0.35), "cut");
+  assert.equal(chooseItemType(0.449999), "cut");
+  assert.equal(chooseItemType(0.45), "wall");
+  assert.equal(chooseItemType(0.72), "armor");
+  assert.equal(chooseItemType(1), "armor");
 });
 
 test("spawned special target uses a valid empty cell", () => {
   let callCount = 0;
   const snake = [{ q: 0, r: 0 }];
   const board = createBoard(2);
-  const target = spawnTarget(board, snake, () => callCount++ === 0 ? 0.77 : 0.5);
+  const target = spawnItem(board, snake, { q: 1, r: 0 }, () => callCount++ === 0 ? 0.4 : 0.5);
   assert.equal(target.type, "cut");
   assert.ok(board.some((cell) => keyOf(cell) === keyOf(target)));
   assert.notEqual(keyOf(target), "0,0");
+  assert.notEqual(keyOf(target), "1,0");
+});
+
+test("random items use an independent bounded appearance delay", () => {
+  assert.equal(nextItemDelay(() => 0), ITEM_MIN_DELAY);
+  assert.ok(nextItemDelay(() => 0.999999) < ITEM_MAX_DELAY);
 });
 
 test("special targets score 50 without growth or normal food count", () => {
   for (const type of ["speed", "slow", "cut", "wall", "armor"]) {
-    const moved = moveGame(baseState({ food: { q: 1, r: 0, type } }), createBoard(3), 3, () => 0);
+    const moved = moveGame(baseState({ item: { q: 1, r: 0, type } }), createBoard(3), 3, () => 0);
     assert.equal(moved.score, 50, type);
     assert.equal(moved.foodCount, 0, type);
     assert.equal(moved.itemCount, 1, type);
@@ -155,13 +160,13 @@ test("speed and slow use explicit bounded multipliers", () => {
 
 test("opposite speed item replaces effect and normal foods consume three charges", () => {
   const board = createBoard(5);
-  let state = moveGame(baseState({ food: { q: 1, r: 0, type: "speed" } }), board, 5, () => 0);
+  let state = moveGame(baseState({ apple: { q: 0, r: 3 }, item: { q: 1, r: 0, type: "speed" } }), board, 5, () => 0);
   assert.deepEqual(state.speedEffect, { type: "speed", remaining: 3 });
-  state = moveGame({ ...state, direction: 0, food: { q: 2, r: 0, type: "slow" } }, board, 5, () => 0);
+  state = moveGame({ ...state, direction: 0, item: { q: 2, r: 0, type: "slow" } }, board, 5, () => 0);
   assert.deepEqual(state.speedEffect, { type: "slow", remaining: 3 });
   for (let remaining = 2; remaining >= 0; remaining -= 1) {
     const next = { q: state.snake[0].q + 1, r: state.snake[0].r };
-    state = moveGame({ ...state, direction: 0, food: { ...next, type: "normal" } }, board, 5, () => 0);
+    state = moveGame({ ...state, direction: 0, apple: next, item: null }, board, 5, () => 0);
     assert.deepEqual(state.speedEffect, remaining ? { type: "slow", remaining } : null);
   }
 });
@@ -171,9 +176,9 @@ test("cut removes up to three tail cells but preserves minimum length three", ()
     { q: 0, r: 0 }, { q: -1, r: 0 }, { q: -2, r: 0 },
     { q: -2, r: 1 }, { q: -2, r: 2 }, { q: -1, r: 2 }, { q: 0, r: 2 }
   ];
-  const cutLong = moveGame(baseState({ snake: longSnake, food: { q: 1, r: 0, type: "cut" } }), createBoard(5), 5, () => 0);
+  const cutLong = moveGame(baseState({ snake: longSnake, item: { q: 1, r: 0, type: "cut" } }), createBoard(5), 5, () => 0);
   assert.equal(cutLong.snake.length, 4);
-  const cutShort = moveGame(baseState({ food: { q: 1, r: 0, type: "cut" } }), createBoard(5), 5, () => 0);
+  const cutShort = moveGame(baseState({ item: { q: 1, r: 0, type: "cut" } }), createBoard(5), 5, () => 0);
   assert.equal(cutShort.snake.length, 3);
 });
 
@@ -213,10 +218,10 @@ test("adding walls avoids duplicates, caps five and safely skips no candidate", 
 
 test("wall item adds one safe wall and armor item stores one charge", () => {
   const board = createBoard(5);
-  const wallResult = moveGame(baseState({ food: { q: 1, r: 0, type: "wall" } }), board, 5, () => 0);
+  const wallResult = moveGame(baseState({ item: { q: 1, r: 0, type: "wall" } }), board, 5, () => 0);
   assert.equal(wallResult.walls.length, 1);
   assert.equal(wallResult.armorCharge, 0);
-  const armorResult = moveGame(baseState({ armorCharge: 1, food: { q: 1, r: 0, type: "armor" } }), board, 5, () => 0);
+  const armorResult = moveGame(baseState({ armorCharge: 1, item: { q: 1, r: 0, type: "armor" } }), board, 5, () => 0);
   assert.equal(armorResult.armorCharge, 1);
 });
 
@@ -277,7 +282,8 @@ test("new game state resets every per-game value", () => {
   assert.deepEqual(state.walls, []);
   assert.equal(state.armorCharge, 0);
   assert.equal(state.phase, "countdown");
-  assert.equal(state.food.type, "normal");
+  assert.ok(state.apple);
+  assert.equal(state.item, null);
 });
 
 test("frame clock permits at most one move after a long hidden delay", () => {

@@ -60,7 +60,10 @@
   const FAST_MULTIPLIER = 0.75;
   const SLOW_MULTIPLIER = 1.3;
   const MAX_EFFECT_INTERVAL = 720;
-  const TARGET_TYPES = Object.freeze(["normal", "speed", "slow", "cut", "wall", "armor"]);
+  const ITEM_TYPES = Object.freeze(["speed", "slow", "cut", "wall", "armor"]);
+  const ITEM_MIN_DELAY = 3500;
+  const ITEM_MAX_DELAY = 8000;
+  const ITEM_LIFETIME = 5000;
 
   function getMoveInterval(foodCount) {
     return Math.max(MIN_INTERVAL, START_INTERVAL - foodCount * SPEED_STEP);
@@ -70,13 +73,12 @@
     return Math.floor((START_INTERVAL - getMoveInterval(foodCount)) / SPEED_STEP) + 1;
   }
 
-  function chooseTargetType(randomValue) {
+  function chooseItemType(randomValue) {
     const value = Math.max(0, Math.min(0.999999999, randomValue));
-    if (value < 0.6) return "normal";
-    if (value < 0.7) return "speed";
-    if (value < 0.75) return "slow";
-    if (value < 0.8) return "cut";
-    if (value < 0.9) return "wall";
+    if (value < 0.25) return "speed";
+    if (value < 0.35) return "slow";
+    if (value < 0.45) return "cut";
+    if (value < 0.72) return "wall";
     return "armor";
   }
 
@@ -88,8 +90,8 @@
     return base;
   }
 
-  function spawnFood(board, snake, random = Math.random, maxRandomAttempts = 8) {
-    const occupied = new Set(snake.map(keyOf));
+  function spawnFood(board, snake, random = Math.random, maxRandomAttempts = 8, blocked = []) {
+    const occupied = new Set([...snake, ...blocked].filter(Boolean).map(keyOf));
     const empty = board.filter((cell) => !occupied.has(keyOf(cell)));
     if (!empty.length) return null;
     for (let attempt = 0; attempt < maxRandomAttempts; attempt += 1) {
@@ -100,10 +102,14 @@
     return { ...empty[0] };
   }
 
-  function spawnTarget(board, snake, random = Math.random, maxRandomAttempts = 8) {
-    const type = chooseTargetType(random());
-    const target = spawnFood(board, snake, random, maxRandomAttempts);
+  function spawnItem(board, snake, apple, random = Math.random, maxRandomAttempts = 8) {
+    const type = chooseItemType(random());
+    const target = spawnFood(board, snake, random, maxRandomAttempts, apple ? [apple] : []);
     return target ? { ...target, type } : null;
+  }
+
+  function nextItemDelay(random = Math.random) {
+    return ITEM_MIN_DELAY + Math.floor(Math.max(0, Math.min(0.999999, random())) * (ITEM_MAX_DELAY - ITEM_MIN_DELAY));
   }
 
   function wallKey(a, b) {
@@ -175,9 +181,12 @@
     if (state.phase !== "playing") return state;
     const nextHead = getNeighbor(state.snake[0], state.direction);
     if (!isInsideBoard(nextHead, radius)) return { ...state, phase: "ended", endReason: "boundary" };
-    const ateTarget = state.food && keyOf(nextHead) === keyOf(state.food);
-    const targetType = state.food?.type || "normal";
-    const grows = ateTarget && targetType === "normal";
+    const apple = state.apple || (state.food && (!state.food.type || state.food.type === "normal") ? state.food : null);
+    const item = state.item || (state.food?.type && state.food.type !== "normal" ? state.food : null);
+    const ateApple = apple && keyOf(nextHead) === keyOf(apple);
+    const ateItem = item && keyOf(nextHead) === keyOf(item);
+    const targetType = ateItem ? item.type : "normal";
+    const grows = ateApple;
     const collisionBody = grows ? state.snake : state.snake.slice(0, -1);
     if (collisionBody.some((cell) => keyOf(cell) === keyOf(nextHead))) {
       return { ...state, phase: "ended", endReason: "self" };
@@ -194,13 +203,13 @@
     let nextSnake = grows
       ? [nextHead, ...state.snake]
       : [nextHead, ...state.snake.slice(0, -1)];
-    if (!ateTarget) return { ...state, snake: nextSnake, walls: nextWalls, armorCharge: nextArmorCharge };
+    if (!ateApple && !ateItem) return { ...state, snake: nextSnake, apple, item, walls: nextWalls, armorCharge: nextArmorCharge };
 
     let nextScore = state.score;
     let nextFoodCount = state.foodCount;
     let nextEffect = state.speedEffect || null;
     let nextItemCount = state.itemCount || 0;
-    if (targetType === "normal") {
+    if (ateApple) {
       nextScore += 100;
       nextFoodCount += 1;
       if (nextEffect) {
@@ -212,22 +221,25 @@
       nextItemCount += 1;
       if (targetType === "speed" || targetType === "slow") nextEffect = { type: targetType, remaining: 3 };
       if (targetType === "cut") nextSnake = nextSnake.slice(0, Math.max(3, nextSnake.length - 3));
-      if (targetType === "wall") nextWalls = addSafeWall(board, nextSnake, state.food, nextWalls, radius, random);
+      if (targetType === "wall") nextWalls = addSafeWall(board, nextSnake, item, nextWalls, radius, random);
       if (targetType === "armor") nextArmorCharge = 1;
     }
-    const food = spawnTarget(board, nextSnake, random);
+    const nextApple = ateApple ? spawnFood(board, nextSnake, random, 8, ateItem ? [] : [item]) : apple;
+    const nextItem = ateItem ? null : item;
     return {
       ...state,
       snake: nextSnake,
-      food,
+      apple: nextApple,
+      item: nextItem,
+      food: nextApple,
       score: nextScore,
       foodCount: nextFoodCount,
       itemCount: nextItemCount,
       speedEffect: nextEffect,
       walls: nextWalls,
       armorCharge: nextArmorCharge,
-      phase: food ? "playing" : "ended",
-      endReason: food ? null : "win"
+      phase: nextApple ? "playing" : "ended",
+      endReason: nextApple ? null : "win"
     };
   }
 
@@ -269,7 +281,8 @@
       speedEffect: null,
       walls: [],
       armorCharge: 0,
-      food: spawnTarget(board, snake, random),
+      apple: spawnFood(board, snake, random),
+      item: null,
       phase: "countdown",
       endReason: null
     };
@@ -280,7 +293,7 @@
     return { shouldMove: next >= moveInterval, remainder: next >= moveInterval ? next - moveInterval : next };
   }
 
-  const api = { DIRECTIONS, BOARD_RADIUS, START_INTERVAL, SPEED_STEP, MIN_INTERVAL, FAST_MULTIPLIER, SLOW_MULTIPLIER, TARGET_TYPES, keyOf, addHex, hexDistance, isInsideBoard, getNeighbor, createBoard, pixelToAxial, turnDirection, enqueueTurn, advanceSnake, getMoveInterval, getSpeedLevel, chooseTargetType, getEffectiveMoveInterval, spawnFood, spawnTarget, wallKey, wallCells, areNeighbors, isBoardConnected, createWallCandidates, addSafeWall, moveGame, loadPreferences, savePreference, updateBestScore, createInitialGameState, advanceFrameClock };
+  const api = { DIRECTIONS, BOARD_RADIUS, START_INTERVAL, SPEED_STEP, MIN_INTERVAL, FAST_MULTIPLIER, SLOW_MULTIPLIER, ITEM_TYPES, ITEM_MIN_DELAY, ITEM_MAX_DELAY, ITEM_LIFETIME, keyOf, addHex, hexDistance, isInsideBoard, getNeighbor, createBoard, pixelToAxial, turnDirection, enqueueTurn, advanceSnake, getMoveInterval, getSpeedLevel, chooseItemType, getEffectiveMoveInterval, spawnFood, spawnItem, nextItemDelay, wallKey, wallCells, areNeighbors, isBoardConnected, createWallCandidates, addSafeWall, moveGame, loadPreferences, savePreference, updateBestScore, createInitialGameState, advanceFrameClock };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   if (typeof document === "undefined") return;
 
@@ -320,7 +333,10 @@
   let lastFrame = 0;
   let accumulated = 0;
   let frameId = 0;
-  let food = spawnTarget(board, snake);
+  let apple = spawnFood(board, snake);
+  let item = null;
+  let itemSpawnAt = 0;
+  let itemExpiresAt = 0;
   let score = 0;
   let foodCount = 0;
   let itemCount = 0;
@@ -335,6 +351,7 @@
   let audioContext = null;
   let countdownRunId = 0;
   let pausedFrom = null;
+  let pausedAt = 0;
 
   function updateMuteButton() {
     muteButton.textContent = muted ? "🔇 소리 꺼짐" : "🔊 소리 켜짐";
@@ -382,7 +399,7 @@
     foodCountElement.textContent = foodCount;
     speedLevelElement.textContent = `${getSpeedLevel(foodCount)}단계`;
     const names = { speed: "질주", slow: "느림" };
-    speedEffectElement.textContent = speedEffect ? `${names[speedEffect.type]} · 먹이 ${speedEffect.remaining}개` : "없음";
+    speedEffectElement.textContent = speedEffect ? `${names[speedEffect.type]} · 사과 ${speedEffect.remaining}개` : "없음";
     defenseStatusElement.textContent = `${armorCharge ? "헬멧 1회" : "헬멧 없음"} · 벽 ${walls.length}/5`;
     bestScoreElement.textContent = `${bestScore}점`;
   }
@@ -426,7 +443,8 @@
 
     drawWalls();
 
-    if (food) drawTarget(food);
+    if (apple) drawTarget({ ...apple, type: "normal" });
+    if (item) drawTarget(item);
 
     if (snake.length > 1) {
       const bodyPath = snake.slice().reverse().map(axialToPixel);
@@ -563,12 +581,15 @@
 
   function tick() {
     if (turnQueue.length) direction = turnDirection(direction, turnQueue.shift());
-    const reachedTarget = food && keyOf(getNeighbor(snake[0], direction)) === keyOf(food) ? food.type : null;
+    const nextHead = getNeighbor(snake[0], direction);
+    const reachedApple = apple && keyOf(nextHead) === keyOf(apple);
+    const reachedItem = item && keyOf(nextHead) === keyOf(item) ? item.type : null;
     const previousWallCount = walls.length;
     const previousArmor = armorCharge;
-    const nextState = moveGame({ snake, direction, food, score, foodCount, itemCount, speedEffect, walls, armorCharge, phase }, board, radius);
+    const nextState = moveGame({ snake, direction, apple, item, score, foodCount, itemCount, speedEffect, walls, armorCharge, phase }, board, radius);
     snake = nextState.snake;
-    food = nextState.food;
+    apple = nextState.apple;
+    item = nextState.item;
     score = nextState.score;
     foodCount = nextState.foodCount;
     itemCount = nextState.itemCount;
@@ -580,11 +601,16 @@
     if (phase === "playing" && previousArmor && !armorCharge && walls.length < previousWallCount) {
       status.textContent = "쾅! 헬멧으로 벽을 부쉈어요";
       sensoryFeedback("break");
-    } else if (phase === "playing" && reachedTarget === "wall") {
+    } else if (phase === "playing" && reachedItem === "wall") {
       status.textContent = walls.length > previousWallCount ? "칸 사이에 새 벽이 생겼어요" : "안전한 자리가 없어 벽 생성을 건너뛰었어요";
       sensoryFeedback("collect");
-    } else if (phase === "playing" && reachedTarget) {
-      status.textContent = reachedTarget === "armor" ? "헬멧 충전 완료 · 벽을 한 번 부술 수 있어요" : "먹이 획득!";
+    } else if (phase === "playing" && reachedItem) {
+      status.textContent = reachedItem === "armor" ? "헬멧 충전 완료 · 벽을 한 번 부술 수 있어요" : "아이템 획득!";
+      sensoryFeedback("collect");
+      itemSpawnAt = performance.now() + nextItemDelay();
+      itemExpiresAt = 0;
+    } else if (phase === "playing" && reachedApple) {
+      status.textContent = "사과 획득! 새 사과가 나타났어요";
       sensoryFeedback("collect");
     }
     if (phase === "ended") finishGame(nextState.endReason);
@@ -618,6 +644,21 @@
 
   function loop(now) {
     if (phase !== "playing") return;
+    if (item && now >= itemExpiresAt) {
+      item = null;
+      itemExpiresAt = 0;
+      itemSpawnAt = now + nextItemDelay();
+      status.textContent = "아이템이 사라졌어요";
+      draw();
+    } else if (!item && now >= itemSpawnAt) {
+      item = spawnItem(board, snake, apple);
+      itemSpawnAt = item ? 0 : now + nextItemDelay();
+      itemExpiresAt = item ? now + ITEM_LIFETIME : 0;
+      if (item) {
+        status.textContent = "반짝! 랜덤 아이템이 나타났어요";
+        draw();
+      }
+    }
     if (!lastFrame) lastFrame = now;
     const moveInterval = getEffectiveMoveInterval(foodCount, speedEffect);
     const clock = advanceFrameClock(accumulated, now - lastFrame, moveInterval);
@@ -655,6 +696,7 @@
     countdown.hidden = true;
     phase = "playing";
     lastFrame = 0;
+    itemSpawnAt = performance.now() + nextItemDelay();
     setTurnControls(true);
     status.textContent = "달리는 중 · 좌우로 회전하세요";
     frameId = requestAnimationFrame(loop);
@@ -673,7 +715,10 @@
     speedEffect = initial.speedEffect;
     walls = initial.walls;
     armorCharge = initial.armorCharge;
-    food = initial.food;
+    apple = initial.apple;
+    item = initial.item;
+    itemSpawnAt = 0;
+    itemExpiresAt = 0;
     accumulated = 0;
     lastFrame = 0;
     pausedFrom = null;
@@ -689,6 +734,7 @@
   function pauseGame() {
     if (phase !== "playing" && phase !== "countdown") return;
     pausedFrom = phase;
+    pausedAt = performance.now();
     phase = "paused";
     countdownRunId += 1;
     cancelAnimationFrame(frameId);
@@ -712,6 +758,10 @@
     canvas.removeAttribute("aria-hidden");
     setTurnControls(true);
     lastFrame = 0;
+    const pausedFor = Math.max(0, performance.now() - pausedAt);
+    if (itemSpawnAt) itemSpawnAt += pausedFor;
+    if (itemExpiresAt) itemExpiresAt += pausedFor;
+    pausedAt = 0;
     status.textContent = "다시 출발!";
     frameId = requestAnimationFrame(loop);
   }
