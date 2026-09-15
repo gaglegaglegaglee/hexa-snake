@@ -449,12 +449,10 @@
     snake.slice().reverse().forEach((cell, reverseIndex) => {
       const index = snake.length - 1 - reverseIndex;
       const p = axialToPixel(cell);
-      if (index === 0) {
-        hexPath(p.x, p.y, layout.size * .72);
-      } else {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, layout.size * .62, 0, Math.PI * 2);
-      }
+      const tailProgress = snake.length > 1 ? index / (snake.length - 1) : 0;
+      const segmentRadius = index === 0 ? .72 : .64 - tailProgress * .3;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, layout.size * segmentRadius, 0, Math.PI * 2);
       ctx.fillStyle = index === 0 ? "#ffe267" : "#72edaa";
       ctx.fill();
       ctx.strokeStyle = index === 0 ? "#d65f45" : "#15836c";
