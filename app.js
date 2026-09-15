@@ -220,7 +220,7 @@
       nextScore += 50;
       nextItemCount += 1;
       if (targetType === "speed" || targetType === "slow") nextEffect = { type: targetType, remaining: 3 };
-      if (targetType === "cut") nextSnake = nextSnake.slice(0, Math.max(3, nextSnake.length - 3));
+      if (targetType === "cut") nextSnake = nextSnake.slice(0, Math.max(1, nextSnake.length - 3));
       if (targetType === "wall") nextWalls = addSafeWall(board, nextSnake, item, nextWalls, radius, random);
       if (targetType === "armor") nextArmorCharge = 1;
     }
