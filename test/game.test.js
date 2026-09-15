@@ -148,7 +148,7 @@ test("special targets score 50 without growth or normal food count", () => {
     assert.equal(moved.score, 50, type);
     assert.equal(moved.foodCount, 0, type);
     assert.equal(moved.itemCount, 1, type);
-    assert.equal(moved.snake.length, type === "cut" ? 1 : 3, type);
+    assert.equal(moved.snake.length, 3, type);
   }
 });
 
@@ -171,7 +171,7 @@ test("opposite speed item replaces effect and normal foods consume three charges
   }
 });
 
-test("cut removes exactly three tail cells while preserving the head", () => {
+test("cut removes three tail cells while preserving a minimum length of three", () => {
   const longSnake = [
     { q: 0, r: 0 }, { q: -1, r: 0 }, { q: -2, r: 0 },
     { q: -2, r: 1 }, { q: -2, r: 2 }, { q: -1, r: 2 }, { q: 0, r: 2 }
@@ -179,7 +179,7 @@ test("cut removes exactly three tail cells while preserving the head", () => {
   const cutLong = moveGame(baseState({ snake: longSnake, item: { q: 1, r: 0, type: "cut" } }), createBoard(5), 5, () => 0);
   assert.equal(cutLong.snake.length, 4);
   const cutShort = moveGame(baseState({ item: { q: 1, r: 0, type: "cut" } }), createBoard(5), 5, () => 0);
-  assert.equal(cutShort.snake.length, 1);
+  assert.equal(cutShort.snake.length, 3);
 });
 
 test("wall key is unordered and decodes to neighboring cells", () => {

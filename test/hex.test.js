@@ -52,7 +52,7 @@ test("left and right turns wrap in 60 degree steps", () => {
 test("live board and starting pace use the enlarged, quicker defaults", () => {
   assert.equal(BOARD_RADIUS, 6);
   assert.equal(createBoard(BOARD_RADIUS).length, 127);
-  assert.equal(START_INTERVAL, 480);
+  assert.equal(START_INTERVAL, 450);
 });
 
 test("turn queue has a hard limit and does not mutate input", () => {
