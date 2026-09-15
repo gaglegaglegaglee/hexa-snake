@@ -449,7 +449,12 @@
     snake.slice().reverse().forEach((cell, reverseIndex) => {
       const index = snake.length - 1 - reverseIndex;
       const p = axialToPixel(cell);
-      hexPath(p.x, p.y, layout.size * (index === 0 ? .72 : .62));
+      if (index === 0) {
+        hexPath(p.x, p.y, layout.size * .72);
+      } else {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, layout.size * .62, 0, Math.PI * 2);
+      }
       ctx.fillStyle = index === 0 ? "#ffe267" : "#72edaa";
       ctx.fill();
       ctx.strokeStyle = index === 0 ? "#d65f45" : "#15836c";
@@ -514,7 +519,7 @@
 
   function drawTarget(target) {
     const { x, y } = axialToPixel(target);
-    const s = layout.size * .36;
+    const s = layout.size * .45;
     const type = target.type || "normal";
     ctx.save();
     ctx.translate(x, y);
