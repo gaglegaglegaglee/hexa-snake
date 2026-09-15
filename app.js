@@ -327,7 +327,6 @@
   const boardKeys = new Set(board.map(keyOf));
   let layout = null;
   let snake = [{ q: 0, r: 0 }, { q: -1, r: 0 }, { q: -2, r: 0 }];
-  let renderFromSnake = snake.map((cell) => ({ ...cell }));
   let direction = 0;
   let turnQueue = [];
   let phase = "ready";
@@ -423,14 +422,8 @@
     ctx.closePath();
   }
 
-  function draw(moveProgress = 1) {
+  function draw() {
     if (!layout) return;
-    const progress = Math.max(0, Math.min(1, moveProgress));
-    const eased = progress * progress * (3 - 2 * progress);
-    const visualSnake = snake.map((cell, index) => {
-      const from = renderFromSnake[index] || cell;
-      return { q: from.q + (cell.q - from.q) * eased, r: from.r + (cell.r - from.r) * eased };
-    });
     ctx.clearRect(0, 0, layout.width, layout.height);
     const background = ctx.createRadialGradient(layout.cx, layout.cy, 10, layout.cx, layout.cy, layout.width * .55);
     background.addColorStop(0, "#173d50");
@@ -453,24 +446,7 @@
     if (apple) drawTarget({ ...apple, type: "normal" });
     if (item) drawTarget(item);
 
-    if (snake.length > 1) {
-      const bodyPath = visualSnake.slice().reverse().map(axialToPixel);
-      ctx.save();
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.beginPath();
-      ctx.moveTo(bodyPath[0].x, bodyPath[0].y);
-      bodyPath.slice(1).forEach((point) => ctx.lineTo(point.x, point.y));
-      ctx.strokeStyle = "#15836c";
-      ctx.lineWidth = layout.size * 1.03;
-      ctx.stroke();
-      ctx.strokeStyle = "#72edaa";
-      ctx.lineWidth = layout.size * .78;
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    visualSnake.slice().reverse().forEach((cell, reverseIndex) => {
+    snake.slice().reverse().forEach((cell, reverseIndex) => {
       const index = snake.length - 1 - reverseIndex;
       const p = axialToPixel(cell);
       hexPath(p.x, p.y, layout.size * (index === 0 ? .72 : .62));
@@ -593,7 +569,6 @@
     const reachedItem = item && keyOf(nextHead) === keyOf(item) ? item.type : null;
     const previousWallCount = walls.length;
     const previousArmor = armorCharge;
-    renderFromSnake = snake.map((cell) => ({ ...cell }));
     const nextState = moveGame({ snake, direction, apple, item, score, foodCount, itemCount, speedEffect, walls, armorCharge, phase }, board, radius);
     snake = nextState.snake;
     apple = nextState.apple;
@@ -622,6 +597,7 @@
       sensoryFeedback("collect");
     }
     if (phase === "ended") finishGame(nextState.endReason);
+    draw();
   }
 
   function finishGame(reason) {
@@ -672,7 +648,6 @@
     accumulated = clock.remainder;
     lastFrame = now;
     if (clock.shouldMove) tick();
-    if (phase === "playing") draw(Math.min(1, accumulated / moveInterval));
     if (phase === "playing") frameId = requestAnimationFrame(loop);
   }
 
@@ -715,7 +690,6 @@
     countdownRunId += 1;
     const initial = createInitialGameState(board);
     snake = initial.snake;
-    renderFromSnake = snake.map((cell) => ({ ...cell }));
     direction = initial.direction;
     turnQueue = initial.turnQueue;
     score = initial.score;
